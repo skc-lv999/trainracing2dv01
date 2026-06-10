@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Implicit Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+    
+    function incoming() { 
+      return request.resource.data; 
+    }
+
+    // Validation blueprint for Leaderboard Entries
+    function isValidLeaderboardEntry(data) {
+      return data.keys().hasAll(['name', 'routeId', 'trainType', 'time', 'penaltyTime', 'totalScoreTime', 'customs', 'createdAt'])
+        && data.keys().size() == 8
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 20
+        && data.routeId is string && (data.routeId == 'yamanote' || data.routeId == 'chuo' || data.routeId == 'shonan')
+        && data.trainType is string && (data.trainType == 'E231' || data.trainType == 'E233' || data.trainType == 'E235')
+        && data.time is number && data.time >= 0 && data.time <= 1000
+        && data.penaltyTime is number && data.penaltyTime >= 0 && data.penaltyTime <= 1000
+        && data.totalScoreTime is number && data.totalScoreTime >= 0 && data.totalScoreTime <= 2000
+        && data.createdAt is string && data.createdAt.size() <= 50
+        && data.customs is map
+        && data.customs.keys().hasAll(['motor', 'vvvf', 'brake', 'ats'])
+        && data.customs.keys().size() == 4
+        && data.customs.motor is int && data.customs.motor >= 1 && data.customs.motor <= 5
+        && data.customs.vvvf is int && data.customs.vvvf >= 1 && data.customs.vvvf <= 5
+        && data.customs.brake is int && data.customs.brake >= 1 && data.customs.brake <= 5
+        && data.customs.ats is int && data.customs.ats >= 1 && data.customs.ats <= 5;
+    }
+
+    // Leaderboards route rule
+    match /leaderboards/{entryId} {
+      allow read: if true; // Public listings are permitted so everyone can compete
+      allow create: if isValidId(entryId) 
+                    && isValidLeaderboardEntry(incoming())
+                    && incoming().totalScoreTime == incoming().time + incoming().penaltyTime;
+      allow update, delete: if false; // Once submitted, times are immortal. Prevent cheating/exploitation!
+    }
+  }
+}

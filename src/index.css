@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@keyframes rain-fall {
+  0% {
+    background-position: 0px 0px;
+  }
+  100% {
+    background-position: 150px 300px;
+  }
+}
+
+@keyframes spin-slow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+

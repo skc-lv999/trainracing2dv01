@@ -1,0 +1,52 @@
+{
+  "entities": {
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "鉄道タイムアタックのランキング結果",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "プレイヤーのニックネーム"
+        },
+        "routeId": {
+          "type": "string",
+          "description": "路線のID (yamanote, chuo, shonan)"
+        },
+        "trainType": {
+          "type": "string",
+          "enum": ["E231", "E233", "E235"],
+          "description": "使用した車両タイプ"
+        },
+        "time": {
+          "type": "number",
+          "description": "純粋な走行にかかった時間（秒）"
+        },
+        "penaltyTime": {
+          "type": "number",
+          "description": "オーバーランや速度制限超過等の各種ペナルティ時間（秒）"
+        },
+        "totalScoreTime": {
+          "type": "number",
+          "description": "最終リザルトタイム (走行時間 + ペナルティ時間。これが昇順でランキングされる)"
+        },
+        "customs": {
+          "type": "object",
+          "description": "走行時のカスタマイズ性能ステータス"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "登録日時 (ISO-8601形式)"
+        }
+      },
+      "required": ["name", "routeId", "trainType", "time", "penaltyTime", "totalScoreTime", "customs", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/leaderboards/{entryId}": {
+      "schema": "LeaderboardEntry",
+      "description": "各タイムアタック路線のリーダーボードスコアのコレクション"
+    }
+  }
+}

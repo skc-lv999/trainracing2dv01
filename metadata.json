@@ -1,0 +1,6 @@
+{
+  "name": "トレインレーシング２D",
+  "description": "E231系・E233系・E235系を選んで運転！車両の性能をカスタマイズして各路線の最速タイムを目指す鉄道タイムアタックゲームです。オンラインランキングにも対応！",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
