@@ -43,7 +43,7 @@ export default function TitleScreen({
   const [isEditingName, setIsEditingName] = useState<boolean>(false);
   const [tempName, setTempName] = useState<string>(playerSave.playerName);
   const [fbStatus, setFbStatus] = useState(getFirebaseStatus());
-  const [step, setStep] = useState<'intro' | 'lobby'>('intro');
+  const [step, setStep] = useState<'intro' | 'route_select' | 'lobby'>('intro');
 
   // 路線やタブが変わったときにランキングを取得
   const fetchRankings = async () => {
@@ -143,7 +143,7 @@ export default function TitleScreen({
           <div className="space-y-6 w-full max-w-md mx-auto">
             <button
               onClick={() => {
-                setStep('lobby');
+                setStep('route_select');
               }}
               className="w-full bg-gradient-to-r from-emerald-500 to-lime-500 text-slate-950 hover:from-emerald-400 hover:to-lime-400 font-black py-4.5 px-8 rounded-2xl text-xl shadow-2xl shadow-emerald-500/10 active:scale-[0.98] transition-all duration-300 cursor-pointer flex items-center justify-center gap-3 group"
             >
@@ -207,11 +207,17 @@ export default function TitleScreen({
             {/* タイトルとロゴ (戻るボタン追加) */}
             <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
               <button
-                onClick={() => setStep('intro')}
+                onClick={() => {
+                  if (step === 'lobby') {
+                    setStep('route_select');
+                  } else {
+                    setStep('intro');
+                  }
+                }}
                 className="bg-slate-950 hover:bg-slate-800 border border-slate-800 py-1.5 px-3 rounded-lg text-xs text-slate-300 font-bold transition flex items-center gap-1 cursor-pointer"
-                title="タイトル画面に戻る"
+                title={step === 'lobby' ? '路線選択に戻る' : 'タイトル画面に戻る'}
               >
-                ← 戻る
+                ← {step === 'lobby' ? '路線選択に戻る' : 'タイトルに戻る'}
               </button>
               <div className="flex items-center gap-2.5">
                 <div className="bg-emerald-500 text-slate-950 p-1.5 rounded-lg font-mono font-bold text-base tracking-wider shadow-inner flex items-center gap-1.5">
@@ -219,7 +225,7 @@ export default function TitleScreen({
                 </div>
                 <div>
                   <h1 className="text-lg font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-lime-300 bg-clip-text text-transparent">
-                    トレインレーシング２D
+                    {step === 'route_select' ? '乗務路線選択 (Route Selection)' : '運転車両・機器カスタマイズ'}
                   </h1>
                 </div>
               </div>
@@ -272,211 +278,291 @@ export default function TitleScreen({
       </header>
 
       {/* メインレイアウト */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow">
-        {/* 左カラム (8/12) - 車両 ＆ 路線選択 */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          {/* 1. 車両選択セクション */}
-          <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
-              <h2 className="font-bold text-base flex items-center gap-2 text-emerald-400">
-                <Zap className="w-5 h-5 text-emerald-400 animate-pulse" />
-                車両の選択
-              </h2>
-              <span className="text-xs text-slate-400 font-mono">Select & Tune Up Your Unit</span>
-            </div>
+      {step === 'route_select' ? (
+        <div className="flex flex-col gap-6 w-full max-w-5xl mx-auto py-4 animate-fade-in" id="route-selection-scene">
+          <div className="text-center space-y-2 mb-2">
+            <h2 className="text-2xl font-black text-white tracking-widest bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+              乗 務 路 線 選 択
+            </h2>
+            <p className="text-xs text-slate-400 sm:text-sm">
+              運行チームと車両を割り当てる路線を選択してください。各路線の特性、制限速度、駅数が異なります。
+            </p>
+          </div>
 
-            {/* 車両タブ選択 */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
-              {(Object.keys(TRAIN_TEMPLATES) as TrainType[]).map((type) => {
-                const spec = TRAIN_TEMPLATES[type];
-                const active = selectedTrain === type;
-                return (
-                  <button
-                    key={type}
-                    onClick={() => setSelectedTrain(type)}
-                    className={`relative overflow-hidden py-3 px-2 sm:px-4 rounded-xl text-center border transition duration-200 flex flex-col items-center gap-1 cursor-pointer ${
-                      active
-                        ? 'bg-slate-800 border-emerald-500 text-white shadow-md shadow-emerald-500/5'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-white'
-                    }`}
-                  >
-                    <span 
-                      className="absolute top-0 left-0 right-0 h-1.5" 
-                      style={{ backgroundColor: spec.color }}
-                    />
-                    <span className="font-mono text-lg font-bold tracking-wider mt-1">{type}系</span>
-                    <span className="text-[10px] hidden sm:inline opacity-75 truncate max-w-full">
-                      {type === 'E231' ? '通勤型スタンダード' : type === 'E233' ? '高加速・快速型' : '次世代ブレーキ'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {ROUTES.map((route) => {
+              const active = selectedRoute.id === route.id;
+              
+              let difficultyColor = 'text-green-400 bg-green-500/10 border-green-500/20';
+              if (route.difficulty === '★★☆') {
+                difficultyColor = 'text-orange-400 bg-orange-500/10 border-orange-500/20';
+              } else if (route.difficulty === '★★★') {
+                difficultyColor = 'text-red-400 bg-red-500/10 border-red-500/20';
+              }
 
-            {/* 車両詳細 & カスタム状況 */}
-            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 grid grid-cols-1 md:grid-cols-12 gap-4">
-              {/* 車両のビジュアル(2Dアイコン)と説明文 */}
-              <div className="md:col-span-5 flex flex-col justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span className="text-lg font-bold text-white">{currentSpecs.name}</span>
-                    <span 
-                      className="text-[10px] font-bold px-2 py-0.5 rounded text-slate-950 font-mono"
-                      style={{ backgroundColor: currentSpecs.color }}
-                    >
-                      JR EAST TYPE
-                    </span>
+              return (
+                <div
+                  key={route.id}
+                  onClick={() => setSelectedRoute(route)}
+                  className={`relative rounded-2xl border p-6 flex flex-col justify-between h-[360px] cursor-pointer transition-all duration-300 overflow-hidden group ${
+                    active
+                      ? 'bg-gradient-to-b from-slate-900 via-slate-900 to-slate-850 border-emerald-500 shadow-2xl shadow-emerald-500/10 ring-1 ring-emerald-500/30'
+                      : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900 hover:shadow-lg text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span className={`absolute top-0 left-0 right-0 h-1.5 transition-all duration-300 ${active ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-transparent'}`} />
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-start gap-2">
+                      <h3 className={`font-black text-lg tracking-wide ${active ? 'text-white' : 'text-slate-200'}`}>
+                        {route.name}
+                      </h3>
+                      <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-full border shrink-0 ${difficultyColor}`}>
+                        {route.difficulty === '★☆☆' ? '初級' : route.difficulty === '★★☆' ? '中級' : '上級'} {route.difficulty}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-400 leading-relaxed min-h-[50px]">
+                      {route.description}
+                    </p>
+
+                    <div className="border-t border-slate-800/80 pt-4 space-y-2">
+                      <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 block">運行駅リスト (Stations Included)</span>
+                      <div className="relative pl-3 border-l-2 border-slate-805 py-1 space-y-3">
+                        {route.stations.map((station, sIdx) => {
+                          const isFirst = sIdx === 0;
+                          const isLast = sIdx === route.stations.length - 1;
+                          return (
+                            <div key={station.name} className="flex items-center gap-1.5 text-[11px] relative">
+                              <div className={`absolute -left-[17px] w-2.5 h-2.5 rounded-full border-2 border-slate-900 ${
+                                isFirst ? 'bg-emerald-500' : isLast ? 'bg-red-500' : 'bg-blue-400'
+                              }`} />
+                              <span className={`font-bold ${active ? 'text-slate-300' : 'text-slate-400'} truncate`}>
+                                {station.name}
+                              </span>
+                              {station.speedLimit > 0 && (
+                                <span className="text-[9px] text-amber-500 font-mono scale-90 bg-amber-500/5 px-1 rounded ml-1">
+                                  {station.speedLimit}km/h制限
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed md:max-h-24 overflow-y-auto">
-                    {currentSpecs.description}
-                  </p>
+
+                  <div className="border-t border-slate-800/60 pt-3 flex justify-between items-center text-xs font-mono mt-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-500">総駅数</span>
+                      <span className={`font-bold ${active ? 'text-white' : 'text-slate-300'}`}>{route.stations.length} 駅</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[10px] text-slate-500">営業キロ</span>
+                      <span className={`font-bold ${active ? 'text-white' : 'text-slate-300'}`}>{(route.totalDistance / 1000).toFixed(1)} km</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <button
+              onClick={() => {
+                setStep('lobby');
+              }}
+              className="w-full max-w-md bg-gradient-to-r from-emerald-500 to-lime-500 text-slate-950 hover:from-emerald-400 hover:to-lime-400 font-extrabold py-4 px-8 rounded-xl text-md shadow-xl shadow-emerald-500/10 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2.5 group font-sans"
+            >
+              <span>この路線で決定し、車両選択へ進む</span>
+              <span className="group-hover:translate-x-1 transition-transform">➔</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow" id="lobby-selection-scene">
+          {/* 左カラム (8/12) - 車両 ＆ 決定した路線 */}
+          <div className="lg:col-span-8 flex flex-col gap-6">
+            {/* 1. 車両選択セクション */}
+            <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col gap-4">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
+                <h2 className="font-bold text-base flex items-center gap-2 text-emerald-400">
+                  <Zap className="w-5 h-5 text-emerald-400 animate-pulse" />
+                  車両の選択
+                </h2>
+                <span className="text-xs text-slate-400 font-mono">Select & Tune Up Your Unit</span>
+              </div>
+
+              {/* 車両タブ選択 */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                {(Object.keys(TRAIN_TEMPLATES) as TrainType[]).map((type) => {
+                  const spec = TRAIN_TEMPLATES[type];
+                  const active = selectedTrain === type;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => setSelectedTrain(type)}
+                      className={`relative overflow-hidden py-3 px-2 sm:px-4 rounded-xl text-center border transition duration-200 flex flex-col items-center gap-1 cursor-pointer ${
+                        active
+                          ? 'bg-slate-800 border-emerald-500 text-white shadow-md shadow-emerald-500/5'
+                          : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-900 hover:text-white'
+                      }`}
+                    >
+                      <span 
+                        className="absolute top-0 left-0 right-0 h-1.5" 
+                        style={{ backgroundColor: spec.color }}
+                      />
+                      <span className="font-mono text-lg font-bold tracking-wider mt-1">{type}系</span>
+                      <span className="text-[10px] hidden sm:inline opacity-75 truncate max-w-full">
+                        {type === 'E231' ? '通勤型スタンダード' : type === 'E233' ? '高加速・快速型' : '次世代ブレーキ'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* 車両詳細 & カスタム状況 */}
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-4 grid grid-cols-1 md:grid-cols-12 gap-4">
+                {/* 車両のビジュアル(2Dアイコン)と説明文 */}
+                <div className="md:col-span-5 flex flex-col justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <span className="text-lg font-bold text-white">{currentSpecs.name}</span>
+                      <span 
+                        className="text-[10px] font-bold px-2 py-0.5 rounded text-slate-950 font-mono"
+                        style={{ backgroundColor: currentSpecs.color }}
+                      >
+                        JR EAST TYPE
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed md:max-h-24 overflow-y-auto">
+                      {currentSpecs.description}
+                    </p>
+                  </div>
+
+                  {/* チューニング画面へ進む */}
+                  <button
+                    onClick={() => onOpenCustomize(selectedTrain)}
+                    className="bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500 text-slate-200 hover:text-emerald-400 text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  >
+                    <Settings2 className="w-4 h-4" />
+                    <span>この車両をカスタマイズする</span>
+                  </button>
                 </div>
 
-                {/* チューニング画面へ進む */}
+                {/* 実効パラメーター表示 */}
+                <div className="md:col-span-7 flex flex-col gap-3.5 border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-4">
+                  <span className="text-xs font-bold text-emerald-400 font-mono">CUSTOM TUNER STATE (Lv.1 - 5)</span>
+                  
+                  {/* 最高速度 */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400 flex items-center gap-1.5">
+                        <Gauge className="w-3.5 h-3.5 text-blue-400" />
+                        主電動機 (最高速度)
+                      </span>
+                      <span className="text-white font-bold">
+                        {calculated.maxSpeed} <span className="text-[10px] text-slate-500">km/h</span>
+                        <span className="text-emerald-400 ml-1.5">(Lv.{customState.motor})</span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
+                      <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${maxSpeedPercent}%` }} />
+                    </div>
+                  </div>
+
+                  {/* 起動加速度 */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400 flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5 text-amber-400" />
+                        VVVFインバータ (加速度)
+                      </span>
+                      <span className="text-white font-bold">
+                        {calculated.acceleration.toFixed(1)} <span className="text-[10px] text-slate-500">km/h/s</span>
+                        <span className="text-emerald-400 ml-1.5">(Lv.{customState.vvvf})</span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
+                      <div className="h-full bg-amber-500 rounded-full transition-all duration-300" style={{ width: `${accelPercent}%` }} />
+                    </div>
+                  </div>
+
+                  {/* ブレーキ減速度 */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400 flex items-center gap-1.5">
+                        <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                        制動装置 (ブレーキ)
+                      </span>
+                      <span className="text-white font-bold">
+                        {calculated.deceleration.toFixed(1)} <span className="text-[10px] text-slate-500">km/h/s</span>
+                        <span className="text-emerald-400 ml-1.5">(Lv.{customState.brake})</span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
+                      <div className="h-full bg-red-500 rounded-full transition-all duration-300" style={{ width: `${decelPercent}%` }} />
+                    </div>
+                  </div>
+
+                  {/* ATS / 停車支援 */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-mono">
+                      <span className="text-slate-400 flex items-center gap-1.5">
+                        <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
+                        停車支援 / 空転抑制
+                      </span>
+                      <span className="text-white font-bold">
+                        {calculated.atsAssistLevel === 1 ? '標準' : calculated.atsAssistLevel === 5 ? '極(全支援)' : `アシスト Lv.${calculated.atsAssistLevel}`}
+                        <span className="text-emerald-400 ml-1.5">(Lv.{customState.ats})</span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
+                      <div className="h-full bg-purple-500 rounded-full transition-all duration-300" style={{ width: `${atsPercent}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* 3. 乗務登録・運行開始（確定パネル） */}
+            <div className="bg-gradient-to-br from-slate-904 via-slate-900 to-slate-850 border border-emerald-500/40 rounded-xl p-5 shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1.5 text-center sm:text-left">
+                <span className="text-[10px] text-emerald-400 font-mono font-black uppercase tracking-widest block bg-emerald-500/10 px-2.5 py-0.5 rounded-full w-max mx-auto sm:ml-0">
+                  SCHEDULED STAGE
+                </span>
+                <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start pt-1">
+                  <span className="text-lg font-black text-white">{selectedRoute.name}</span>
+                  <span className="text-xs bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded">
+                    {selectedRoute.difficulty}
+                  </span>
+                  <span className="text-xs text-slate-400 font-mono">
+                    {(selectedRoute.totalDistance / 1000).toFixed(1)}km / {selectedRoute.stations.length}駅
+                  </span>
+                </div>
+                <p className="text-xs text-slate-450 max-w-xl">
+                  {selectedRoute.description}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0 pt-2 sm:pt-0">
                 <button
-                  onClick={() => onOpenCustomize(selectedTrain)}
-                  className="bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500 text-slate-200 hover:text-emerald-400 text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                  onClick={() => setStep('route_select')}
+                  className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold py-3.5 px-5 rounded-xl transition cursor-pointer"
                 >
-                  <Settings2 className="w-4 h-4" />
-                  <span>この車両をカスタマイズする</span>
+                  ← 路線を変更
+                </button>
+
+                <button
+                  onClick={() => onStartGame(selectedRoute, selectedTrain)}
+                  className="bg-gradient-to-r from-emerald-500 to-lime-500 hover:from-emerald-400 hover:to-lime-400 text-slate-950 font-black py-3.5 px-8 rounded-xl text-md shadow-lg shadow-emerald-500/20 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 flex-1 sm:flex-initial"
+                >
+                  <Play className="w-5 h-5 fill-slate-950 animate-pulse" />
+                  <span>運 行 開 始 ! (GO)</span>
                 </button>
               </div>
-
-              {/* 実効パラメーター表示 */}
-              <div className="md:col-span-7 flex flex-col gap-3.5 border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-4">
-                <span className="text-xs font-bold text-emerald-400 font-mono">CUSTOM TUNER STATE (Lv.1 - 5)</span>
-                
-                {/* 最高速度 */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <Gauge className="w-3.5 h-3.5 text-blue-400" />
-                      主電動機 (最高速度)
-                    </span>
-                    <span className="text-white font-bold">
-                      {calculated.maxSpeed} <span className="text-[10px] text-slate-500">km/h</span>
-                      <span className="text-emerald-400 ml-1.5">(Lv.{customState.motor})</span>
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
-                    <div className="h-full bg-blue-500 rounded-full transition-all duration-300" style={{ width: `${maxSpeedPercent}%` }} />
-                  </div>
-                </div>
-
-                {/* 起動加速度 */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-amber-400" />
-                      VVVFインバータ (加速度)
-                    </span>
-                    <span className="text-white font-bold">
-                      {calculated.acceleration.toFixed(1)} <span className="text-[10px] text-slate-500">km/h/s</span>
-                      <span className="text-emerald-400 ml-1.5">(Lv.{customState.vvvf})</span>
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
-                    <div className="h-full bg-amber-500 rounded-full transition-all duration-300" style={{ width: `${accelPercent}%` }} />
-                  </div>
-                </div>
-
-                {/* ブレーキ減速度 */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-                      制動装置 (ブレーキ)
-                    </span>
-                    <span className="text-white font-bold">
-                      {calculated.deceleration.toFixed(1)} <span className="text-[10px] text-slate-500">km/h/s</span>
-                      <span className="text-emerald-400 ml-1.5">(Lv.{customState.brake})</span>
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
-                    <div className="h-full bg-red-500 rounded-full transition-all duration-300" style={{ width: `${decelPercent}%` }} />
-                  </div>
-                </div>
-
-                {/* ATS / 停車支援 */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs font-mono">
-                    <span className="text-slate-400 flex items-center gap-1.5">
-                      <HelpCircle className="w-3.5 h-3.5 text-purple-400" />
-                      停車支援 / 空転抑制
-                    </span>
-                    <span className="text-white font-bold">
-                      {calculated.atsAssistLevel === 1 ? '標準' : calculated.atsAssistLevel === 5 ? '極(全支援)' : `アシスト Lv.${calculated.atsAssistLevel}`}
-                      <span className="text-emerald-400 ml-1.5">(Lv.{customState.ats})</span>
-                    </span>
-                  </div>
-                  <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
-                    <div className="h-full bg-purple-500 rounded-full transition-all duration-300" style={{ width: `${atsPercent}%` }} />
-                  </div>
-                </div>
-              </div>
             </div>
-          </section>
-
-          {/* 2. 路線選択セクション */}
-          <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg flex-grow flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
-              <h2 className="font-bold text-base flex items-center gap-2 text-emerald-400">
-                <Trophy className="w-5 h-5" />
-                路線の選択
-              </h2>
-              <span className="text-xs text-slate-400 font-mono">Select Route Stage</span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {ROUTES.map((route) => {
-                const active = selectedRoute.id === route.id;
-                // 各路線ごとの駅の数とトータル距離
-                const stationsText = route.stations.map(s => s.name).join(' ➔ ');
-                return (
-                  <button
-                    key={route.id}
-                    onClick={() => setSelectedRoute(route)}
-                    className={`p-4 rounded-xl text-left border cursor-pointer transition flex flex-col justify-between h-44 ${
-                      active
-                        ? 'bg-gradient-to-br from-slate-850 to-slate-800 border-emerald-500 text-white shadow-lg'
-                        : 'bg-slate-950 border-slate-850 text-slate-400 hover:bg-slate-900 hover:text-slate-200'
-                    }`}
-                  >
-                    <div className="space-y-1 w-full">
-                      <div className="flex justify-between items-start gap-1">
-                        <span className="font-bold text-sm tracking-wide text-white block truncate">{route.name}</span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 bg-slate-800 text-emerald-400 rounded-md shrink-0">
-                          {route.difficulty}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 leading-normal line-clamp-3">
-                        {route.description}
-                      </p>
-                    </div>
-
-                    <div className="border-t border-slate-800/50 w-full pt-2 flex justify-between items-center text-[10px] font-mono mt-auto">
-                      <div>
-                        <span className="text-slate-500">総駅数:</span> <span className="text-white font-bold">{route.stations.length}駅</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">距離:</span> <span className="text-white font-bold">{(route.totalDistance / 1000).toFixed(1)}km</span>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* ゲーム開始! */}
-            <button
-              onClick={() => onStartGame(selectedRoute, selectedTrain)}
-              className="mt-2 w-full bg-gradient-to-r from-emerald-500 to-lime-500 text-slate-950 hover:from-emerald-400 hover:to-lime-400 font-bold py-3.5 px-6 rounded-xl text-md shadow-lg shadow-emerald-500/10 cursor-pointer flex items-center justify-center gap-2 transition transform hover:scale-[1.01] active:scale-[0.99] font-sans"
-            >
-              <Play className="w-5 h-5 fill-slate-950" />
-              <span>この路線でタイムアタック開始！</span>
-            </button>
-          </section>
-        </div>
+          </div>
 
         {/* 右カラム (4/12) - ランキング ＆ システム情報 */}
         <div className="lg:col-span-4 flex flex-col gap-6">
@@ -610,6 +696,7 @@ export default function TitleScreen({
           </section>
         </div>
       </div>
+      )}
         </>
       )}
     </div>
